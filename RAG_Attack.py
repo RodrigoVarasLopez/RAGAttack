@@ -1,23 +1,22 @@
 import streamlit as st
 import openai
-from openai import NotFoundError
 import pandas as pd
 import tempfile
 
-st.title("✨🛡️ RAG Attack 🛡️✨")
+st.title("RAG Attack")
 
-# Request user's OpenAI API Key
+# Solicitar API Key
 api_key = st.sidebar.text_input("Enter your OpenAI API KEY", type="password")
 
 if api_key:
     openai.api_key = api_key
 
-    # Fetch existing Vector Stores
+    # Listar Vector Stores usando la API beta
     try:
-        vector_stores = openai.VectorStore.list()
+        vector_stores = openai.beta.vector_stores.list()
         vector_store_ids = [store.id for store in vector_stores.data]
 
-        # Vector Store selection
+        # Selección de Vector Store
         selected_store = st.selectbox("Select an existing Vector Store", vector_store_ids)
 
         user_query = st.text_area("Enter your query")
@@ -28,7 +27,7 @@ if api_key:
             else:
                 assistant = openai.beta.assistants.create(
                     name="RAG Assistant",
-                    instructions="Use the provided information to respond to user queries.",
+                    instructions="Use provided information to answer the user's queries.",
                     tools=[{"type": "file_search"}],
                     model="gpt-3.5-turbo",
                     tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
@@ -52,7 +51,7 @@ if api_key:
                     st.success("Results retrieved successfully")
                     st.write(response)
                 else:
-                    st.error("An error occurred while retrieving the response from the Vector Store.")
+                    st.error("An error occurred while retrieving the response.")
 
         st.markdown("---")
         st.subheader("Overwrite Vector Store from Excel")
@@ -67,16 +66,20 @@ if api_key:
                     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
                         df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
-                        openai.VectorStore.delete(vector_store_id=selected_store)
-                        st.warning(f"Vector Store '{selected_store}' has been deleted successfully.")
+                        # Eliminar Vector Store existente
+                        openai.beta.vector_stores.delete(vector_store_id=selected_store)
+                        st.warning(f"Vector Store '{selected_store}' deleted successfully.")
 
-                        new_vector_store = openai.VectorStore.create(name=selected_store)
+                        # Crear nueva Vector Store
+                        new_vector_store = openai.beta.vector_stores.create(name=selected_store)
 
+                        # Subir archivo
                         with open(tmp.name, "rb") as file:
-                            openai.VectorStoreFile.upload_and_poll(
+                            openai.beta.vector_stores.files.upload_and_poll(
                                 vector_store_id=new_vector_store.id,
                                 file=file
                             )
+
                         st.success("Vector Store overwritten and updated successfully.")
 
                 except Exception as e:
@@ -86,5 +89,6 @@ if api_key:
 
     except Exception as e:
         st.error(f"An error occurred while listing Vector Stores: {e}")
+
 else:
     st.sidebar.warning("Please enter your API KEY to continue.")
