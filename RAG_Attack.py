@@ -11,12 +11,12 @@ api_key = st.sidebar.text_input("Enter your OpenAI API KEY", type="password")
 if api_key:
     openai.api_key = api_key
 
-    # Listar Vector Stores usando la API beta
+    # Listar Vector Stores existentes
     try:
-        vector_stores = openai.beta.vector_stores.list()
+        vector_stores = openai.vector_stores.list()
         vector_store_ids = [store.id for store in vector_stores.data]
 
-        # Selección de Vector Store
+        # Seleccionar una Vector Store existente
         selected_store = st.selectbox("Select an existing Vector Store", vector_store_ids)
 
         user_query = st.text_area("Enter your query")
@@ -27,7 +27,7 @@ if api_key:
             else:
                 assistant = openai.beta.assistants.create(
                     name="RAG Assistant",
-                    instructions="Use provided information to answer the user's queries.",
+                    instructions="Use provided information to answer user's queries.",
                     tools=[{"type": "file_search"}],
                     model="gpt-3.5-turbo",
                     tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
@@ -66,21 +66,21 @@ if api_key:
                     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
                         df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
-                        # Eliminar Vector Store existente
-                        openai.beta.vector_stores.delete(vector_store_id=selected_store)
-                        st.warning(f"Vector Store '{selected_store}' deleted successfully.")
+                    # Eliminar Vector Store existente
+                    openai.vector_stores.delete(selected_store)
+                    st.warning(f"Vector Store '{selected_store}' deleted successfully.")
 
-                        # Crear nueva Vector Store
-                        new_vector_store = openai.beta.vector_stores.create(name=selected_store)
+                    # Crear nueva Vector Store
+                    new_vector_store = openai.vector_stores.create(name=selected_store)
 
-                        # Subir archivo
-                        with open(tmp.name, "rb") as file:
-                            openai.beta.vector_stores.files.upload_and_poll(
-                                vector_store_id=new_vector_store.id,
-                                file=file
-                            )
+                    # Subir archivo al nuevo Vector Store
+                    with open(tmp.name, "rb") as file:
+                        openai.vector_stores.files.upload_and_poll(
+                            vector_store_id=new_vector_store.id,
+                            file=file
+                        )
 
-                        st.success("Vector Store overwritten and updated successfully.")
+                    st.success("Vector Store overwritten and updated successfully.")
 
                 except Exception as e:
                     st.error(f"Error during overwrite: {e}")
