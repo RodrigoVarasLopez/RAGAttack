@@ -5,18 +5,18 @@ import tempfile
 
 st.title("✨🛡️ RAG Attack 🛡️✨")
 
-# Solicitar API Key
+# Request OpenAI API Key
 api_key = st.sidebar.text_input("Enter your OpenAI API KEY", type="password")
 
 if api_key:
     openai.api_key = api_key
 
-    # Listar Vector Stores existentes
+    # List existing Vector Stores
     try:
         vector_stores = openai.vector_stores.list()
         vector_store_ids = [store.id for store in vector_stores.data]
 
-        # Seleccionar una Vector Store existente
+        # Select an existing Vector Store
         selected_store = st.selectbox("Select an existing Vector Store", vector_store_ids)
 
         user_query = st.text_area("Enter your query")
@@ -25,25 +25,26 @@ if api_key:
             if not user_query:
                 st.error("Please enter a query.")
             else:
-                assistant = openai.beta.assistants.create(
-                    name="RAG Assistant",
-                    instructions="Use provided information to answer user's queries.",
-                    tools=[{"type": "file_search"}],
-                    model="gpt-3.5-turbo",
-                    tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
-                )
+                with st.spinner('Querying the Vector Store...'):
+                    assistant = openai.beta.assistants.create(
+                        name="RAG Assistant",
+                        instructions="Use provided information to answer user's queries.",
+                        tools=[{"type": "file_search"}],
+                        model="gpt-3.5-turbo",
+                        tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
+                    )
 
-                thread = openai.beta.threads.create()
-                openai.beta.threads.messages.create(
-                    thread_id=thread.id,
-                    role="user",
-                    content=user_query
-                )
+                    thread = openai.beta.threads.create()
+                    openai.beta.threads.messages.create(
+                        thread_id=thread.id,
+                        role="user",
+                        content=user_query
+                    )
 
-                run = openai.beta.threads.runs.create_and_poll(
-                    thread_id=thread.id,
-                    assistant_id=assistant.id
-                )
+                    run = openai.beta.threads.runs.create_and_poll(
+                        thread_id=thread.id,
+                        assistant_id=assistant.id
+                    )
 
                 if run.status == "completed":
                     messages = openai.beta.threads.messages.list(thread_id=thread.id)
@@ -66,14 +67,14 @@ if api_key:
                     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
                         df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
-                    # Eliminar Vector Store existente
+                    # Delete existing Vector Store
                     openai.vector_stores.delete(selected_store)
                     st.warning(f"Vector Store '{selected_store}' deleted successfully.")
 
-                    # Crear nueva Vector Store
+                    # Create new Vector Store
                     new_vector_store = openai.vector_stores.create(name=selected_store)
 
-                    # Subir archivo al nuevo Vector Store
+                    # Upload file to new Vector Store
                     with open(tmp.name, "rb") as file:
                         openai.vector_stores.files.upload_and_poll(
                             vector_store_id=new_vector_store.id,
