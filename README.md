@@ -18,8 +18,8 @@ Aplicación web creada con Streamlit que permite consultar y sobrescribir fácil
 1. Clona este repositorio:
 
 ```bash
-git clone <url-del-repositorio>
-cd <nombre-del-repositorio>
+git clone https://github.com/RodrigoVarasLopez/RAGAttack.git
+cd RAGAttack
 ```
 
 2. Instala las dependencias:
@@ -60,9 +60,9 @@ Tu archivo Excel debe tener un formato claro con columnas relevantes según tu i
 
 ## 🧑‍💻 Autor
 
-Creado y mantenido por [Tu Nombre](https://github.com/tuusuario).
+Creado y mantenido por Rodrigo Varas.
 
 ## 📜 Licencia
 
-Este proyecto está bajo la Licencia MIT - consulta el archivo [LICENSE](LICENSE) para más detalles.
+Este proyecto está bajo la Licencia MIT
 
