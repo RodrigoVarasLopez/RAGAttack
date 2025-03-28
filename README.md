@@ -18,8 +18,8 @@ A web application built with Streamlit to easily query and overwrite Vector Stor
 1. Clone this repository:
 
 ```bash
-git clone <repository-url>
-cd <repository-name>
+git clone https://github.com/RodrigoVarasLopez/RAGAttack.git
+cd RAGAttack
 ```
 
 2. Install dependencies:
