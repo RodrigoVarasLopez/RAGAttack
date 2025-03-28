@@ -1,19 +1,20 @@
 import streamlit as st
-from openai import OpenAI, NotFoundError
+import openai
+from openai import NotFoundError
 import pandas as pd
 import tempfile
 
-st.title("✨🛡️ RAG Attack 🛡️✨")
+st.title("RAG Attack")
 
 # Request user's OpenAI API Key
 api_key = st.sidebar.text_input("Enter your OpenAI API KEY", type="password")
 
 if api_key:
-    client = OpenAI(api_key=api_key)
+    openai.api_key = api_key
 
     # Fetch existing Vector Stores
     try:
-        vector_stores = client.vector_stores.list()
+        vector_stores = openai.VectorStore.list()
         vector_store_ids = [store.id for store in vector_stores.data]
 
         # Vector Store selection
@@ -25,7 +26,7 @@ if api_key:
             if not user_query:
                 st.error("Please enter a query.")
             else:
-                assistant = client.beta.assistants.create(
+                assistant = openai.beta.assistants.create(
                     name="RAG Assistant",
                     instructions="Use the provided information to respond to user queries.",
                     tools=[{"type": "file_search"}],
@@ -33,20 +34,20 @@ if api_key:
                     tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
                 )
 
-                thread = client.beta.threads.create()
-                client.beta.threads.messages.create(
+                thread = openai.beta.threads.create()
+                openai.beta.threads.messages.create(
                     thread_id=thread.id,
                     role="user",
                     content=user_query
                 )
 
-                run = client.beta.threads.runs.create_and_poll(
+                run = openai.beta.threads.runs.create_and_poll(
                     thread_id=thread.id,
                     assistant_id=assistant.id
                 )
 
                 if run.status == "completed":
-                    messages = client.beta.threads.messages.list(thread_id=thread.id)
+                    messages = openai.beta.threads.messages.list(thread_id=thread.id)
                     response = messages.data[0].content[0].text.value
                     st.success("Results retrieved successfully")
                     st.write(response)
@@ -66,13 +67,13 @@ if api_key:
                     with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
                         df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
-                        client.vector_stores.delete(vector_store_id=selected_store)
+                        openai.VectorStore.delete(vector_store_id=selected_store)
                         st.warning(f"Vector Store '{selected_store}' has been deleted successfully.")
 
-                        new_vector_store = client.vector_stores.create(name=selected_store)
+                        new_vector_store = openai.VectorStore.create(name=selected_store)
 
                         with open(tmp.name, "rb") as file:
-                            client.vector_stores.files.upload_and_poll(
+                            openai.VectorStoreFile.upload_and_poll(
                                 vector_store_id=new_vector_store.id,
                                 file=file
                             )
