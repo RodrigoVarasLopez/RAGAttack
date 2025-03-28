@@ -1,68 +1,68 @@
 # ✨🛡️ RAG Attack 🛡️✨
 
-Aplicación web creada con Streamlit que permite consultar y sobrescribir fácilmente Vector Stores utilizando la API de OpenAI. Ideal para sistemas basados en RAG (Retrieval-Augmented Generation).
+A web application built with Streamlit to easily query and overwrite Vector Stores using the OpenAI API. Ideal for systems based on RAG (Retrieval-Augmented Generation).
 
-## 📋 Características
+## 📋 Features
 
-- **Consultar Vector Stores existentes** mediante lenguaje natural.
-- **Sobrescribir y actualizar Vector Stores** mediante carga directa de archivos Excel.
-- Interfaz sencilla e intuitiva.
+- **Query existing Vector Stores** using natural language.
+- **Overwrite and update Vector Stores** by directly uploading Excel files.
+- Simple and intuitive interface.
 
-## ⚙️ Requisitos previos
+## ⚙️ Prerequisites
 
-- Python 3.8 o superior
-- Cuenta en [OpenAI](https://platform.openai.com/) con acceso a la API y clave válida
+- Python 3.8 or higher
+- An account at [OpenAI](https://platform.openai.com/) with API access and a valid API key
 
-## 🚀 Instalación
+## 🚀 Installation
 
-1. Clona este repositorio:
+1. Clone this repository:
 
 ```bash
-git clone https://github.com/RodrigoVarasLopez/RAGAttack.git
-cd RAGAttack
+git clone <repository-url>
+cd <repository-name>
 ```
 
-2. Instala las dependencias:
+2. Install dependencies:
 
 ```bash
 pip install streamlit openai pandas openpyxl
 ```
 
-## 🛠️ Configuración
+## 🛠️ Configuration
 
-- Prepara tu clave API desde [OpenAI](https://platform.openai.com/api-keys).
-- La clave API se te solicitará desde la interfaz de usuario al iniciar la aplicación.
+- Prepare your API key from [OpenAI](https://platform.openai.com/api-keys).
+- The API key will be requested from the user interface when starting the application.
 
-## 💻 Ejecutar la aplicación
+## 💻 Running the Application
 
 ```bash
 streamlit run rag_attack.py
 ```
 
-Se abrirá automáticamente una nueva ventana en tu navegador predeterminado en la dirección `http://localhost:8501`.
+A new window will automatically open in your default browser at `http://localhost:8501`.
 
-## 📖 Uso de la aplicación
+## 📖 Application Usage
 
-1. Ingresa tu **API KEY de OpenAI** en el campo correspondiente del panel lateral.
-2. Selecciona una **Vector Store existente** del menú desplegable.
-3. Escribe tu consulta en lenguaje natural y haz clic en `🚀 Realizar Consulta`.
-4. Si deseas sobrescribir una Vector Store existente, carga tu archivo Excel usando el cargador proporcionado y haz clic en `♻️ Sobrescribir Vector Store`.
+1. Enter your **OpenAI API KEY** in the sidebar.
+2. Select an existing **Vector Store** from the dropdown menu.
+3. Write your query in natural language and click on `🚀 Perform Query`.
+4. To overwrite an existing Vector Store, upload your Excel file using the provided uploader and click on `♻️ Overwrite Vector Store`.
 
-## 📂 Formato del archivo Excel para sobrescritura
+## 📂 Excel File Format for Overwriting
 
-Tu archivo Excel debe tener un formato claro con columnas relevantes según tu información. Se recomienda una estructura donde cada fila represente un registro a almacenar en la Vector Store.
+Your Excel file should have a clear format with relevant columns based on your information. A structure where each row represents a record to store in the Vector Store is recommended.
 
-**Ejemplo:**
+**Example:**
 
-| titulo | contenido  |
-|--------|------------|
-| Receta | Ingredientes y preparación |
+| title  | content                     |
+|--------|-----------------------------|
+| Recipe | Ingredients and preparation |
 
-## 🧑‍💻 Autor
+## 🧑‍💻 Author
 
-Creado y mantenido por Rodrigo Varas.
+Created and maintained by Rodrigo Varas(https://github.com/RodrigoVarasLopez).
 
-## 📜 Licencia
+## 📜 License
 
-Este proyecto está bajo la Licencia MIT
+This project is licensed under the MIT License 
 
