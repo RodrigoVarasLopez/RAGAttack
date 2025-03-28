@@ -3,7 +3,7 @@ from openai import OpenAI, NotFoundError
 import pandas as pd
 import tempfile
 
-st.title("RAG Attack")
+st.title("✨🛡️ RAG Attack 🛡️✨")
 
 # Request user's OpenAI API Key
 api_key = st.sidebar.text_input("Enter your OpenAI API KEY", type="password")
