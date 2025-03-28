@@ -3,31 +3,31 @@ from openai import OpenAI, NotFoundError
 import pandas as pd
 import tempfile
 
-st.title("✨🛡️ RAG Attack 🛡️✨")
+st.title("RAG Attack")
 
-# Solicitar al usuario la API Key al inicio del prompt
-api_key = st.sidebar.text_input("🔑 Introduce tu API KEY de OpenAI", type="password")
+# Request user's OpenAI API Key
+api_key = st.sidebar.text_input("Enter your OpenAI API KEY", type="password")
 
 if api_key:
     client = OpenAI(api_key=api_key)
 
-    # Obtener lista de Vector Stores existentes
+    # Fetch existing Vector Stores
     try:
         vector_stores = client.vector_stores.list()
         vector_store_ids = [store.id for store in vector_stores.data]
 
-        # Selección de Vector Store desde la lista
-        selected_store = st.selectbox("📂 Selecciona una Vector Store existente", vector_store_ids)
+        # Vector Store selection
+        selected_store = st.selectbox("Select an existing Vector Store", vector_store_ids)
 
-        consulta_usuario = st.text_area("📝 Introduce tu consulta")
+        user_query = st.text_area("Enter your query")
 
-        if st.button("🚀 Realizar Consulta"):
-            if not consulta_usuario:
-                st.error("❗ Por favor introduce una consulta.")
+        if st.button("Execute Query"):
+            if not user_query:
+                st.error("Please enter a query.")
             else:
                 assistant = client.beta.assistants.create(
                     name="RAG Assistant",
-                    instructions="Utiliza la información proporcionada para responder a las consultas del usuario.",
+                    instructions="Use the provided information to respond to user queries.",
                     tools=[{"type": "file_search"}],
                     model="gpt-3.5-turbo",
                     tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
@@ -37,7 +37,7 @@ if api_key:
                 client.beta.threads.messages.create(
                     thread_id=thread.id,
                     role="user",
-                    content=consulta_usuario
+                    content=user_query
                 )
 
                 run = client.beta.threads.runs.create_and_poll(
@@ -48,17 +48,17 @@ if api_key:
                 if run.status == "completed":
                     messages = client.beta.threads.messages.list(thread_id=thread.id)
                     response = messages.data[0].content[0].text.value
-                    st.success("✅ Resultados obtenidos exitosamente")
+                    st.success("Results retrieved successfully")
                     st.write(response)
                 else:
-                    st.error("❌ Error al obtener la respuesta desde la Vector Store.")
+                    st.error("An error occurred while retrieving the response from the Vector Store.")
 
         st.markdown("---")
-        st.subheader("🔄 Sobrescribir Vector Store desde Excel")
+        st.subheader("Overwrite Vector Store from Excel")
 
-        uploaded_file = st.file_uploader("📥 Sube un archivo Excel para sobrescribir la Vector Store", type=['xlsx'])
+        uploaded_file = st.file_uploader("Upload an Excel file to overwrite the Vector Store", type=['xlsx'])
 
-        if st.button("♻️ Sobrescribir Vector Store"):
+        if st.button("Overwrite Vector Store"):
             if uploaded_file is not None:
                 try:
                     df = pd.read_excel(uploaded_file)
@@ -67,7 +67,7 @@ if api_key:
                         df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
                         client.vector_stores.delete(vector_store_id=selected_store)
-                        st.warning(f"🗑️ Vector Store '{selected_store}' eliminada correctamente.")
+                        st.warning(f"Vector Store '{selected_store}' has been deleted successfully.")
 
                         new_vector_store = client.vector_stores.create(name=selected_store)
 
@@ -76,14 +76,14 @@ if api_key:
                                 vector_store_id=new_vector_store.id,
                                 file=file
                             )
-                        st.success("✅ Vector Store sobrescrita y actualizada correctamente.")
+                        st.success("Vector Store overwritten and updated successfully.")
 
                 except Exception as e:
-                    st.error(f"❌ Error durante la sobrescritura: {e}")
+                    st.error(f"Error during overwrite: {e}")
             else:
-                st.error("❗ Por favor sube un archivo Excel primero.")
+                st.error("Please upload an Excel file first.")
 
     except Exception as e:
-        st.error(f"❌ Ha ocurrido un error al listar las Vector Stores: {e}")
+        st.error(f"An error occurred while listing Vector Stores: {e}")
 else:
-    st.sidebar.warning("⚠️ Por favor, introduce tu API KEY para continuar.")
+    st.sidebar.warning("Please enter your API KEY to continue.")
