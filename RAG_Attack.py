@@ -109,11 +109,18 @@ if st.session_state.api_key_valid:
                         original_store = openai.vector_stores.retrieve(selected_store_id)
                         original_store_name = original_store.name
 
-                        # List and delete files in current Vector Store
-                        existing_files = openai.vector_stores.files.list(selected_store_id)
+                        # List and delete files in current Vector Store and Storage
+                        existing_files = openai.vector_stores.files.list(vector_store_id=selected_store_id)
                         for file in existing_files.data:
                             file_id = file.id
-                            openai.vector_stores.files.delete(selected_store_id, file_id)
+
+                            # Delete file from Vector Store
+                            openai.vector_stores.files.delete(
+                                vector_store_id=selected_store_id,
+                                file_id=file_id
+                            )
+
+                            # Delete file from OpenAI account storage
                             openai.files.delete(file_id)
 
                         # Delete the Vector Store
