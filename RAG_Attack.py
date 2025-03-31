@@ -3,13 +3,13 @@ import openai
 import pandas as pd
 import tempfile
 
-# Application Title
+# Title
 st.title("RAG Attack")
 
-# Brief Summary
+# Description
 st.markdown("""
-**RAG Attack** allows you to interact with your OpenAI Vector Stores (RAGs).  
-Enter your OpenAI API Key to query, view, or overwrite your Vector Stores securely.
+**RAG Attack** allows you to interact with your OpenAI Vector Stores.  
+Enter your OpenAI API Key to manage your Vector Stores securely.
 """)
 
 # Initialize session state
@@ -17,7 +17,7 @@ for key in ['api_key_valid', 'api_key', 'assistant_id']:
     if key not in st.session_state:
         st.session_state[key] = None
 
-# API Key Input
+# API Key input
 api_key_input = st.text_input("Enter your OpenAI API KEY", type="password")
 
 if st.button("Validate API Key"):
@@ -34,7 +34,7 @@ if st.button("Validate API Key"):
     else:
         st.error("Please enter your API KEY first.")
 
-# Main functionalities
+# Main App
 if st.session_state.api_key_valid:
     openai.api_key = st.session_state.api_key
 
@@ -52,7 +52,6 @@ if st.session_state.api_key_valid:
                 if user_query:
                     with st.spinner("Querying Vector Store..."):
                         try:
-                            # Retrieve or create assistant
                             if st.session_state.assistant_id:
                                 assistant = openai.beta.assistants.retrieve(st.session_state.assistant_id)
                             else:
@@ -99,24 +98,22 @@ if st.session_state.api_key_valid:
                         with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
                             df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
-                        # Retrieve original Vector Store name
-                        original_store = openai.vector_stores.retrieve(selected_store_id)
-                        original_store_name = original_store.name
-
-                        # Delete existing files from the Vector Store explicitly
+                        # List files in Vector Store before deletion
                         existing_files = openai.vector_stores.files.list(selected_store_id)
-                        for file in existing_files.data:
-                            openai.vector_stores.files.delete(
-                                vector_store_id=selected_store_id,
-                                file_id=file.id
-                            )
 
-                        # Delete existing Vector Store after clearing files
+                        # Delete files from Vector Store and Storage
+                        for file in existing_files.data:
+                            # Delete from Vector Store
+                            openai.vector_stores.files.delete(selected_store_id, file.id)
+                            # Delete from Storage general
+                            openai.files.delete(file.id)
+
+                        # Delete Vector Store after clearing files
                         openai.vector_stores.delete(selected_store_id)
-                        st.warning(f"Deleted Vector Store '{original_store_name}' and all associated files.")
+                        st.warning(f"Deleted Vector Store '{selected_store_name}' and associated files.")
 
                         # Create new Vector Store with original name
-                        new_store = openai.vector_stores.create(name=original_store_name)
+                        new_store = openai.vector_stores.create(name=selected_store_name)
 
                         # Upload new file
                         with open(tmp.name, "rb") as file:
@@ -125,7 +122,7 @@ if st.session_state.api_key_valid:
                                 file=file
                             )
 
-                        st.success(f"Vector Store '{original_store_name}' overwritten successfully.")
+                        st.success(f"Vector Store '{selected_store_name}' overwritten successfully.")
 
                         # Update assistant link
                         if st.session_state.assistant_id:
