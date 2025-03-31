@@ -3,29 +3,23 @@ import openai
 import pandas as pd
 import tempfile
 
-# Application Title
+# App Title
 st.title("RAG Attack")
 
-# App description
+# Description
 st.markdown("""
 **RAG Attack** allows you to interact with your OpenAI Vector Stores (RAGs).  
 Enter your OpenAI API Key to query, view, or overwrite your Vector Stores securely.
 """)
 
-# Initialize session state
-if 'api_key_valid' not in st.session_state:
-    st.session_state.api_key_valid = False
+# Session state initialization
+for key in ['api_key_valid', 'api_key', 'assistant_id']:
+    if key not in st.session_state:
+        st.session_state[key] = None
 
-if 'api_key' not in st.session_state:
-    st.session_state.api_key = ''
-
-if 'assistant_id' not in st.session_state:
-    st.session_state.assistant_id = None
-
-# Input API Key
+# API Key input
 api_key_input = st.text_input("Enter your OpenAI API KEY", type="password")
 
-# Validate API Key Button
 if st.button("Validate API Key"):
     if api_key_input:
         openai.api_key = api_key_input
@@ -33,130 +27,113 @@ if st.button("Validate API Key"):
             openai.models.list()
             st.session_state.api_key_valid = True
             st.session_state.api_key = api_key_input
-            st.success("API Key is valid. Proceed with RAG Attack functionalities.")
-        except Exception:
+            st.success("API Key is valid.")
+        except:
             st.session_state.api_key_valid = False
-            st.error("Invalid API Key. Please enter a valid OpenAI API Key.")
+            st.error("Invalid API Key.")
     else:
-        st.error("Please enter your API KEY before validating.")
+        st.error("Please enter your API KEY first.")
 
-# Proceed only if API key is validated
+# Main functionalities
 if st.session_state.api_key_valid:
     openai.api_key = st.session_state.api_key
 
-    # List existing Vector Stores
     try:
-        vector_stores = openai.vector_stores.list()
-        vector_store_ids = [store.id for store in vector_stores.data]
+        vector_stores = openai.vector_stores.list().data
+        store_options = {store.name: store.id for store in vector_stores}
 
-        if vector_store_ids:
-            selected_store = st.selectbox("Select an existing Vector Store", vector_store_ids)
+        if store_options:
+            selected_store_name = st.selectbox("Select Vector Store", list(store_options.keys()))
+            selected_store_id = store_options[selected_store_name]
 
             user_query = st.text_area("Enter your query")
 
             if st.button("Execute Query"):
-                if not user_query:
-                    st.error("Please enter a query.")
-                else:
-                    with st.spinner("Querying the Vector Store..."):
+                if user_query:
+                    with st.spinner("Querying Vector Store..."):
                         try:
-                            # Retrieve or create assistant
                             if st.session_state.assistant_id:
                                 assistant = openai.beta.assistants.retrieve(st.session_state.assistant_id)
                             else:
                                 assistant = openai.beta.assistants.create(
                                     name="RAG Assistant",
-                                    instructions="Use provided information to answer user's queries.",
+                                    instructions="Answer queries using Vector Store data.",
                                     tools=[{"type": "file_search"}],
                                     model="gpt-3.5-turbo",
-                                    tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
+                                    tool_resources={"file_search": {"vector_store_ids": [selected_store_id]}}
                                 )
                                 st.session_state.assistant_id = assistant.id
 
-                            # Ensure assistant is correctly linked
                             openai.beta.assistants.update(
                                 assistant_id=assistant.id,
-                                tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
+                                tool_resources={"file_search": {"vector_store_ids": [selected_store_id]}}
                             )
 
                             thread = openai.beta.threads.create()
-                            openai.beta.threads.messages.create(
-                                thread_id=thread.id,
-                                role="user",
-                                content=user_query
-                            )
+                            openai.beta.threads.messages.create(thread.id, role="user", content=user_query)
 
-                            run = openai.beta.threads.runs.create_and_poll(
-                                thread_id=thread.id,
-                                assistant_id=assistant.id
-                            )
+                            run = openai.beta.threads.runs.create_and_poll(thread.id, assistant_id=assistant.id)
 
                             if run.status == "completed":
-                                messages = openai.beta.threads.messages.list(thread_id=thread.id)
+                                messages = openai.beta.threads.messages.list(thread.id)
                                 response = messages.data[0].content[0].text.value
-                                st.success("Results retrieved successfully")
+                                st.success("Query Results")
                                 st.write(response)
                             else:
-                                st.error("An error occurred while retrieving the response.")
+                                st.error("Error retrieving the response.")
                         except Exception as e:
-                            st.error(f"An error occurred during query execution: {e}")
+                            st.error(f"Error during query: {e}")
+                else:
+                    st.error("Enter a query first.")
 
             st.markdown("---")
             st.subheader("Overwrite Vector Store from Excel")
 
-            uploaded_file = st.file_uploader("Upload an Excel file to overwrite the Vector Store", type=['xlsx'])
+            uploaded_file = st.file_uploader("Upload Excel file", type=['xlsx'])
 
             if st.button("Overwrite Vector Store"):
-                if uploaded_file is not None:
+                if uploaded_file:
                     try:
                         df = pd.read_excel(uploaded_file)
-
                         with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
                             df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
-                        # Retrieve original Vector Store name
-                        original_store = openai.vector_stores.retrieve(selected_store)
-                        original_store_name = original_store.name
-
                         # Delete existing Vector Store
-                        openai.vector_stores.delete(selected_store)
-                        st.warning(f"Vector Store '{original_store_name}' deleted successfully.")
+                        openai.vector_stores.delete(selected_store_id)
+                        st.warning(f"Deleted Vector Store '{selected_store_name}'.")
 
-                        # Re-create Vector Store with the original name
-                        new_vector_store = openai.vector_stores.create(name=original_store_name)
-                        st.success(f"New Vector Store '{original_store_name}' created successfully.")
+                        # Delete associated files explicitly from account
+                        files_list = openai.files.list()
+                        for file in files_list.data:
+                            if file.filename.startswith('tmp_'):
+                                openai.files.delete(file.id)
 
-                        # Delete any residual files in new Vector Store
-                        existing_files = openai.vector_stores.files.list(new_vector_store.id)
-                        for file in existing_files.data:
-                            openai.vector_stores.files.delete(
-                                vector_store_id=new_vector_store.id,
-                                file_id=file.id
-                            )
+                        # Create new Vector Store
+                        new_store = openai.vector_stores.create(name=selected_store_name)
 
                         # Upload new file
                         with open(tmp.name, "rb") as file:
                             openai.vector_stores.files.upload_and_poll(
-                                vector_store_id=new_vector_store.id,
+                                vector_store_id=new_store.id,
                                 file=file
                             )
 
-                        st.success("Vector Store overwritten and updated successfully.")
+                        st.success(f"Vector Store '{selected_store_name}' overwritten successfully.")
 
-                        # Update assistant link to new Vector Store
+                        # Update assistant link
                         if st.session_state.assistant_id:
                             openai.beta.assistants.update(
                                 assistant_id=st.session_state.assistant_id,
-                                tool_resources={"file_search": {"vector_store_ids": [new_vector_store.id]}}
+                                tool_resources={"file_search": {"vector_store_ids": [new_store.id]}}
                             )
-                            st.success("Assistant updated successfully with the new Vector Store.")
+                            st.success("Assistant updated with new Vector Store.")
 
                     except Exception as e:
-                        st.error(f"Error during overwrite: {e}")
+                        st.error(f"Error overwriting Vector Store: {e}")
                 else:
-                    st.error("Please upload an Excel file first.")
+                    st.error("Upload an Excel file first.")
         else:
-            st.info("No Vector Stores found in your account.")
+            st.info("No Vector Stores found.")
 
     except Exception as e:
-        st.error(f"An error occurred while listing Vector Stores: {e}")
+        st.error(f"Error listing Vector Stores: {e}")
