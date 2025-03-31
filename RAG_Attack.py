@@ -101,51 +101,60 @@ if st.session_state.api_key_valid:
             st.markdown("---")
             st.subheader("Overwrite Vector Store from Excel")
 
-            uploaded_file = st.file_uploader("Upload an Excel file to overwrite the Vector Store", type=['xlsx'])
+           # Overwrite Vector Store from Excel
+uploaded_file = st.file_uploader("Upload an Excel file to overwrite the Vector Store", type=['xlsx'])
 
-            if st.button("Overwrite Vector Store"):
-                if uploaded_file is not None:
-                    try:
-                        df = pd.read_excel(uploaded_file)
+if st.button("Overwrite Vector Store"):
+    if uploaded_file is not None:
+        try:
+            df = pd.read_excel(uploaded_file)
 
-                        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
-                            df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
+            with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
+                df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
-                        # Get original Vector Store name
-                        original_store = openai.vector_stores.retrieve(selected_store)
-                        original_store_name = original_store.name
+            # Retrieve original Vector Store name
+            original_store = openai.vector_stores.retrieve(selected_store)
+            original_store_name = original_store.name
 
-                        # Delete existing Vector Store
-                        openai.vector_stores.delete(selected_store)
-                        st.warning(f"Vector Store '{original_store_name}' deleted successfully.")
+            # Delete existing Vector Store
+            openai.vector_stores.delete(selected_store)
+            st.warning(f"Vector Store '{original_store_name}' deleted successfully.")
 
-                        # Create new Vector Store explicitly using original name
-                        new_vector_store = openai.vector_stores.create(name=original_store_name)
-                        st.success(f"New Vector Store '{original_store_name}' created successfully.")
+            # Re-create Vector Store explicitly using original name
+            new_vector_store = openai.vector_stores.create(name=original_store_name)
+            st.success(f"New Vector Store '{original_store_name}' created successfully.")
 
-                        # Upload file to new Vector Store
-                        with open(tmp.name, "rb") as file:
-                            openai.vector_stores.files.upload_and_poll(
-                                vector_store_id=new_vector_store.id,
-                                file=file
-                            )
+            # Remove any residual files (if any, for complete safety)
+            existing_files = openai.vector_stores.files.list(new_vector_store.id)
+            for file in existing_files.data:
+                openai.vector_stores.files.delete(
+                    vector_store_id=new_vector_store.id,
+                    file_id=file.id
+                )
 
-                        st.success("Vector Store overwritten and updated successfully.")
+            # Upload the new file (clean upload)
+            with open(tmp.name, "rb") as file:
+                openai.vector_stores.files.upload_and_poll(
+                    vector_store_id=new_vector_store.id,
+                    file=file
+                )
 
-                        # Update assistant to link with the new Vector Store
-                        if st.session_state.assistant_id:
-                            openai.beta.assistants.update(
-                                assistant_id=st.session_state.assistant_id,
-                                tool_resources={"file_search": {"vector_store_ids": [new_vector_store.id]}}
-                            )
-                            st.success("Assistant updated successfully with the new Vector Store.")
+            st.success("Vector Store overwritten and updated successfully.")
 
-                    except Exception as e:
-                        st.error(f"Error during overwrite: {e}")
-                else:
-                    st.error("Please upload an Excel file first.")
+            # Update assistant to link with the new Vector Store
+            if st.session_state.assistant_id:
+                openai.beta.assistants.update(
+                    assistant_id=st.session_state.assistant_id,
+                    tool_resources={"file_search": {"vector_store_ids": [new_vector_store.id]}}
+                )
+                st.success("Assistant updated successfully with the new Vector Store.")
+
+        except Exception as e:
+            st.error(f"Error during overwrite: {e}")
+    else:
+        st.error("Please upload an Excel file first.")
+
         else:
             st.info("No Vector Stores found in your account.")
-
     except Exception as e:
         st.error(f"An error occurred while listing Vector Stores: {e}")
