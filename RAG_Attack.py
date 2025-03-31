@@ -19,6 +19,9 @@ if 'api_key_valid' not in st.session_state:
 if 'api_key' not in st.session_state:
     st.session_state.api_key = ''
 
+if 'assistant_id' not in st.session_state:
+    st.session_state.assistant_id = None
+
 # Input API Key
 api_key_input = st.text_input("Enter your OpenAI API KEY", type="password")
 
@@ -55,11 +58,21 @@ if st.session_state.api_key_valid:
                 else:
                     with st.spinner("Querying the Vector Store..."):
                         try:
-                            assistant = openai.beta.assistants.create(
-                                name="RAG Assistant",
-                                instructions="Use provided information to answer user's queries.",
-                                tools=[{"type": "file_search"}],
-                                model="gpt-3.5-turbo",
+                            if st.session_state.assistant_id:
+                                assistant = openai.beta.assistants.retrieve(st.session_state.assistant_id)
+                            else:
+                                assistant = openai.beta.assistants.create(
+                                    name="RAG Assistant",
+                                    instructions="Use provided information to answer user's queries.",
+                                    tools=[{"type": "file_search"}],
+                                    model="gpt-3.5-turbo",
+                                    tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
+                                )
+                                st.session_state.assistant_id = assistant.id
+
+                            # Ensure assistant has correct Vector Store linked
+                            openai.beta.assistants.update(
+                                assistant_id=assistant.id,
                                 tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
                             )
 
@@ -110,6 +123,14 @@ if st.session_state.api_key_valid:
                             )
 
                         st.success("Vector Store overwritten and updated successfully.")
+
+                        # Re-link the assistant to the new Vector Store immediately after recreation
+                        if st.session_state.assistant_id:
+                            openai.beta.assistants.update(
+                                assistant_id=st.session_state.assistant_id,
+                                tool_resources={"file_search": {"vector_store_ids": [new_vector_store.id]}}
+                            )
+                            st.success("Assistant updated successfully with the new Vector Store.")
 
                     except Exception as e:
                         st.error(f"Error during overwrite: {e}")
