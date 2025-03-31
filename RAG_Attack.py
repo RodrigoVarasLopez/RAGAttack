@@ -3,10 +3,10 @@ import openai
 import pandas as pd
 import tempfile
 
-# Application Title
+# App Title
 st.title("🔑 RAG Attack 🕵️‍♂️✨")
 
-# Brief Summary
+# App Description
 st.markdown("""
 **RAG Attack** allows you to interact with your OpenAI Vector Stores (RAGs).  
 Enter your OpenAI API Key to query, view, or overwrite your Vector Stores easily and securely.
@@ -70,7 +70,7 @@ if st.session_state.api_key_valid:
                                 )
                                 st.session_state.assistant_id = assistant.id
 
-                            # Ensure assistant has correct Vector Store linked
+                            # Ensure assistant is linked correctly
                             openai.beta.assistants.update(
                                 assistant_id=assistant.id,
                                 tool_resources={"file_search": {"vector_store_ids": [selected_store]}}
@@ -111,11 +111,19 @@ if st.session_state.api_key_valid:
                         with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix=".txt") as tmp:
                             df.to_json(tmp.name, orient='records', lines=True, force_ascii=False)
 
+                        # Get original Vector Store name
+                        original_store = openai.vector_stores.retrieve(selected_store)
+                        original_store_name = original_store.name
+
+                        # Delete existing Vector Store
                         openai.vector_stores.delete(selected_store)
-                        st.warning(f"Vector Store '{selected_store}' deleted successfully.")
+                        st.warning(f"Vector Store '{original_store_name}' deleted successfully.")
 
-                        new_vector_store = openai.vector_stores.create(name=selected_store)
+                        # Create new Vector Store explicitly using original name
+                        new_vector_store = openai.vector_stores.create(name=original_store_name)
+                        st.success(f"New Vector Store '{original_store_name}' created successfully.")
 
+                        # Upload file to new Vector Store
                         with open(tmp.name, "rb") as file:
                             openai.vector_stores.files.upload_and_poll(
                                 vector_store_id=new_vector_store.id,
@@ -124,7 +132,7 @@ if st.session_state.api_key_valid:
 
                         st.success("Vector Store overwritten and updated successfully.")
 
-                        # Re-link the assistant to the new Vector Store immediately after recreation
+                        # Update assistant to link with the new Vector Store
                         if st.session_state.assistant_id:
                             openai.beta.assistants.update(
                                 assistant_id=st.session_state.assistant_id,
